@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+{% set principal = ('%' ~ item.name) if item._type == 'group' else item.name %}
+{% set tag = 'NOPASSWD: ' if item.sudo_nopasswd | default(false) else '' %}
+{% if item.sudo | default(false) %}
+{{ principal }} ALL=(ALL:ALL) {{ tag }}ALL
+{% else %}
+{{ principal }} ALL=(root) {{ tag }}{{ item.sudo_commands | join(', ') }}
+{% endif %}

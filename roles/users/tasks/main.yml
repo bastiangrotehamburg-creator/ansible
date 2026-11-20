@@ -1,0 +1,121 @@
+---
+- name: Gruppen und Benutzer aus allen users_*-Variablen zusammenführen
+  ansible.builtin.set_fact:
+    users_all_groups: >-
+      {%- set out = [] -%}
+      {%- for v in query('ansible.builtin.varnames', '^users_groups_') | sort -%}
+      {%-   for g in lookup('ansible.builtin.vars', v) -%}
+      {%-     set _ = out.append({'state': 'present', 'sudo': false, 'sudo_nopasswd': false, 'sudo_commands': []} | combine(g)) -%}
+      {%-   endfor -%}
+      {%- endfor -%}
+      {{ out }}
+    users_all: >-
+      {%- set out = [] -%}
+      {%- for v in query('ansible.builtin.varnames', '^users_list_') | sort -%}
+      {%-   for u in lookup('ansible.builtin.vars', v) -%}
+      {%-     set _ = out.append({'state': 'present', 'groups': [], 'ssh_keys': [], 'sudo': false,
+                                  'sudo_nopasswd': false, 'sudo_commands': []} | combine(u)) -%}
+      {%-   endfor -%}
+      {%- endfor -%}
+      {{ out }}
+
+- name: Schutz vor Aussperren - Ansible-Benutzer darf nicht gelöscht werden
+  ansible.builtin.assert:
+    that: >-
+      users_all | selectattr('name', 'equalto', ansible_user | default('root'))
+      | selectattr('state', 'equalto', 'absent') | list | length == 0
+    fail_msg: "Der Benutzer '{{ ansible_user }}' wird von Ansible selbst verwendet und darf nicht entfernt werden."
+
+- name: Sudo installieren
+  ansible.builtin.apt:
+    name: sudo
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Gruppen anlegen
+  ansible.builtin.group:
+    name: "{{ item.name }}"
+    gid: "{{ item.gid | default(omit) }}"
+    system: "{{ item.system | default(false) }}"
+    state: present
+  loop: "{{ users_all_groups | rejectattr('state', 'equalto', 'absent') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Benutzer anlegen
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    comment: "{{ item.comment | default(omit) }}"
+    uid: "{{ item.uid | default(omit) }}"
+    shell: "{{ item.shell | default(users_default_shell) }}"
+    groups: "{{ item.groups }}"
+    append: "{{ item.groups_append | default(true) }}"
+    password: "{{ item.password | default(omit) }}"
+    update_password: "{{ item.update_password | default('on_create') }}"
+    create_home: true
+    state: present
+  loop: "{{ users_all | rejectattr('state', 'equalto', 'absent') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: "{{ item.password is defined }}"
+
+- name: SSH-Keys hinterlegen
+  ansible.posix.authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ item.ssh_keys | join('\n') }}"
+    exclusive: "{{ item.ssh_keys_exclusive | default(false) }}"
+    state: present
+  loop: "{{ users_all | rejectattr('state', 'equalto', 'absent') | rejectattr('ssh_keys', 'equalto', []) | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Sudo-Regeln berechnen
+  ansible.builtin.set_fact:
+    users_sudo_entries: >-
+      {%- set out = [] -%}
+      {%- for kind, items in [('group', users_all_groups), ('user', users_all)] -%}
+      {%-   for i in items -%}
+      {%-     set e = i | combine({'_type': kind, '_file': kind ~ '-' ~ (i.name | regex_replace('[^A-Za-z0-9_-]', '_'))}) -%}
+      {%-     set _ = e.update({'_active': i.state != 'absent' and (i.sudo | bool or i.sudo_commands | length > 0)}) -%}
+      {%-     set _ = out.append(e) -%}
+      {%-   endfor -%}
+      {%- endfor -%}
+      {{ out }}
+
+- name: Sudo-Regeln schreiben
+  ansible.builtin.template:
+    src: sudoers.j2
+    dest: "{{ users_sudoers_dir }}/{{ item._file }}"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+  loop: "{{ users_sudo_entries | selectattr('_active') | list }}"
+  loop_control:
+    label: "{{ item._type }} {{ item.name }}"
+
+- name: Sudo-Regeln entfernen (kein sudo mehr oder state absent)
+  ansible.builtin.file:
+    path: "{{ users_sudoers_dir }}/{{ item._file }}"
+    state: absent
+  loop: "{{ users_sudo_entries | rejectattr('_active') | list }}"
+  loop_control:
+    label: "{{ item._type }} {{ item.name }}"
+
+- name: Benutzer entfernen
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    state: absent
+    remove: "{{ item.remove_home | default(false) }}"
+  loop: "{{ users_all | selectattr('state', 'equalto', 'absent') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Gruppen entfernen
+  ansible.builtin.group:
+    name: "{{ item.name }}"
+    state: absent
+  loop: "{{ users_all_groups | selectattr('state', 'equalto', 'absent') | list }}"
+  loop_control:
+    label: "{{ item.name }}"

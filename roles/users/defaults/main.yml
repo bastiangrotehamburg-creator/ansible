@@ -1,0 +1,38 @@
+---
+# Gruppen und Benutzer werden aus ALLEN Variablen eingesammelt, deren Name mit
+# "users_groups_" bzw. "users_list_" beginnt. So kann jede Inventory-Gruppe eigene
+# Benutzer beisteuern (z. B. users_list_admins in all.yml, users_list_web in webservers.yml).
+#
+# Gruppen:
+#   users_groups_base:
+#     - name: admins
+#       sudo: true                 # volle sudo-Rechte (ALL)
+#       sudo_nopasswd: false       # true = ohne Passwort
+#     - name: webdevs
+#       sudo_commands:             # nur bestimmte Befehle
+#         - /usr/bin/systemctl reload apache2
+#         - /usr/bin/systemctl restart apache2
+#       sudo_nopasswd: true
+#     - name: altgruppe
+#       state: absent
+#
+# Benutzer:
+#   users_list_admins:
+#     - name: max
+#       comment: Max Mustermann
+#       groups: [admins]
+#       ssh_keys: ["ssh-ed25519 AAAA... max@laptop"]
+#       ssh_keys_exclusive: true   # nicht gelistete Keys entfernen
+#       password: "{{ vault_max_password_hash }}"   # optional, Hash! (mkpasswd -m sha-512)
+#       shell: /bin/bash
+#       sudo: false                # optional, eigene sudo-Regel nur für diesen User
+#       sudo_commands: []
+#       sudo_nopasswd: false
+#     - name: ex_mitarbeiter
+#       state: absent
+#       remove_home: true
+users_groups_default: []
+users_list_default: []
+
+users_default_shell: /bin/bash
+users_sudoers_dir: /etc/sudoers.d

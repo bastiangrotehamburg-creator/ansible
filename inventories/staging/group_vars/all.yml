@@ -3,6 +3,25 @@ ansible_user: deploy
 env_name: staging
 
 common_timezone: Europe/Berlin
-common_admin_users:
+
+# ---------------- Gruppen ----------------
+users_groups_base:
+  - name: admins          # volle Root-Rechte
+    sudo: true
+    sudo_nopasswd: false
+  - name: automation      # Ansible-Benutzer: sudo ohne Passwort (nötig für become)
+    sudo: true
+    sudo_nopasswd: true
+
+# ---------------- Benutzer (auf allen Hosts) ----------------
+users_list_base:
   - name: deploy
-    ssh_keys: []
+    comment: Ansible Automation
+    groups: [automation]
+    ssh_keys: []            # <- Public-Key des Ansible-Controllers eintragen!
+    ssh_keys_exclusive: true
+  # - name: max
+  #   comment: Max Mustermann
+  #   groups: [admins]
+  #   ssh_keys: ["ssh-ed25519 AAAA... max@laptop"]
+  #   password: "{{ vault_max_password_hash }}"   # Hash: mkpasswd -m sha-512

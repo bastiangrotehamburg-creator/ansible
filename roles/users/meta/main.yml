@@ -1,0 +1,13 @@
+---
+galaxy_info:
+  role_name: users
+  author: bastiangrotehamburg-creator
+  description: Users, groups and sudo rules
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+dependencies: []

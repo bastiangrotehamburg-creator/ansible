@@ -12,7 +12,8 @@ inventories/
   staging/ | production/      # hosts.yml + group_vars (all, webservers, dbservers, kubernetes)
 playbooks/
   site.yml                    # Alles installieren
-  common.yml                  # Basis für alle Hosts (Pakete, User, SSH-Härtung, Firewall)
+  common.yml                  # Basis für alle Hosts (Pakete, Benutzer, SSH-Härtung, Firewall)
+  users.yml                   # Nur Benutzer, Gruppen, sudo-Rechte
   firewall.yml                # Nur Firewall (UFW)
   webservers.yml              # Apache2 + PHP + Let's Encrypt (einzeln: apache2.yml, php.yml)
   letsencrypt.yml             # Nur Zertifikate ausstellen + HTTPS aktivieren
@@ -21,7 +22,8 @@ playbooks/
   kubernetes_update.yml       # Kubernetes Rolling Upgrade (Node für Node)
   update.yml                  # System-Updates (apt) für alle Nicht-K8s-Hosts, Reboot bei Bedarf
 roles/
-  common/                     # Pakete, Zeitzone, Admin-User + SSH-Keys, Auto-Updates
+  common/                     # Pakete, Zeitzone, Auto-Updates
+  users/                      # Benutzer, Gruppen, SSH-Keys, sudo-Regeln (/etc/sudoers.d)
   ssh_hardening/              # sshd: kein Root-/Passwort-Login (mit Aussperr-Schutz)
   firewall/                   # UFW: default deny, SSH zuerst, Regeln pro Gruppe
   letsencrypt/                # certbot (webroot), Auto-Renewal, Reload-Hook
@@ -64,7 +66,39 @@ ansible-playbook -i inventories/production/hosts.yml playbooks/site.yml --ask-va
 ansible-lint
 ```
 
-## Firewall (UFW)
+## Benutzer, Gruppen und sudo
+
+Definiert in `group_vars`. Alle Variablen `users_groups_*` und `users_list_*` werden zusammengeführt,
+d. h. `all.yml` legt Benutzer für alle Hosts an, `webservers.yml` zusätzliche nur für Webserver.
+
+```yaml
+users_groups_base:
+  - { name: admins, sudo: true }                       # volle Rechte, mit Passwort
+  - { name: automation, sudo: true, sudo_nopasswd: true }
+users_groups_web:
+  - name: webdevs                                      # nur bestimmte Befehle
+    sudo_nopasswd: true
+    sudo_commands: [/usr/bin/systemctl reload apache2]
+
+users_list_base:
+  - name: max
+    comment: Max Mustermann
+    groups: [admins]
+    ssh_keys: ["ssh-ed25519 AAAA... max@laptop"]
+    password: "{{ vault_max_password_hash }}"          # Hash: mkpasswd -m sha-512
+  - name: ex_mitarbeiter
+    state: absent                                      # Benutzer + sudo-Regel entfernen
+    remove_home: true
+```
+
+- sudo-Regeln landen je Gruppe/Benutzer in `/etc/sudoers.d/group-<name>` bzw. `user-<name>`,
+  werden vor dem Schreiben mit `visudo` geprüft und automatisch entfernt, wenn `sudo` wegfällt.
+- Gruppe `admins`: sudo **mit** Passwort → Admins brauchen einen `password`-Hash.
+- Der Ansible-Benutzer `deploy` ist in `automation` (sudo ohne Passwort, nötig für `become`)
+  und kann nicht versehentlich gelöscht werden.
+- `ssh_keys_exclusive: true` entfernt alle nicht gelisteten Keys des Benutzers.
+- Nur Benutzer ändern: `ansible-playbook playbooks/users.yml`
+
 
 - Läuft über `common.yml` auf **allen** Hosts. SSH wird immer zuerst erlaubt (mit Rate-Limit),
   danach gilt: eingehend alles blockiert, ausgehend alles erlaubt.
@@ -105,7 +139,7 @@ ansible-lint
 ## Wichtig vor dem ersten Lauf
 
 - Hosts/IPs in `inventories/*/hosts.yml` eintragen (aktuell Platzhalter).
-- In `inventories/*/group_vars/all.yml` unter `common_admin_users` echte SSH-Public-Keys hinterlegen.
-  Die Rolle `ssh_hardening` bricht ab, solange kein Key hinterlegt ist – damit man sich nicht aussperrt.
+- In `inventories/*/group_vars/all.yml` beim Benutzer `deploy` (und euren Admins) echte SSH-Public-Keys
+  hinterlegen. Die Rolle `ssh_hardening` bricht ab, solange kein Key hinterlegt ist – damit man sich nicht aussperrt.
 - MySQL-Passwörter: `vault_mysql_app_password` per `ansible-vault` anlegen (siehe `vault.yml.example`).
 - Geheimnisse mit `ansible-vault` verschlüsseln, nicht im Klartext committen.

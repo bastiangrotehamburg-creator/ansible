@@ -3,9 +3,9 @@
   ansible.builtin.assert:
     that: >-
       ssh_hardening_password_authentication == 'yes' or
-      (common_admin_users | default([]) | map(attribute='ssh_keys') | flatten | length > 0)
+      (users_all | default([]) | map(attribute='ssh_keys') | flatten | length > 0)
     fail_msg: >-
-      Passwort-Login würde deaktiviert, aber in common_admin_users ist kein SSH-Key
+      Passwort-Login würde deaktiviert, aber in keiner users_list_*-Variable ist ein SSH-Key
       hinterlegt. Abbruch, um ein Aussperren zu verhindern.
 
 - name: SSH-Härtung konfigurieren

@@ -1,0 +1,7 @@
+---
+- name: Benutzer, Gruppen und sudo-Rechte verwalten
+  hosts: all
+  become: true
+  roles:
+    - role: users
+      tags: [users]

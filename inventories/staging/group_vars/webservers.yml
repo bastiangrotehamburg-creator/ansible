@@ -14,3 +14,18 @@ apache2_hsts: false            # erst einschalten, wenn HTTPS stabil läuft
 
 firewall_rules_web:
   - { port: "80,443", proto: tcp, comment: "HTTP/HTTPS" }
+
+# ---------------- Benutzer/Gruppen nur auf Webservern ----------------
+users_groups_web:
+  - name: webdevs          # darf nur Apache neu laden/starten und Logs lesen
+    sudo_nopasswd: true
+    sudo_commands:
+      - /usr/bin/systemctl reload apache2
+      - /usr/bin/systemctl restart apache2
+      - /usr/bin/systemctl status apache2
+      - /usr/bin/tail -f /var/log/apache2/*
+users_list_web: []
+  # - name: anna
+  #   comment: Anna (Webentwicklung)
+  #   groups: [webdevs, www-data]
+  #   ssh_keys: ["ssh-ed25519 AAAA... anna@laptop"]
