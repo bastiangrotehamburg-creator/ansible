@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+[mysqld]
+bind-address = {{ mysql_bind_address }}
+port = {{ mysql_port }}
+{% for key, value in mysql_settings.items() %}
+{{ key }} = {{ value }}
+{% endfor %}

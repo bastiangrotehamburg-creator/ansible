@@ -1,0 +1,7 @@
+---
+# Kopieren nach inventories/<env>/group_vars/vault.yml ist NICHT möglich (Dateiname = Gruppe),
+# daher als all/vault.yml anlegen:
+#   mkdir -p inventories/production/group_vars/all
+#   git mv inventories/production/group_vars/all.yml inventories/production/group_vars/all/main.yml
+#   ansible-vault create inventories/production/group_vars/all/vault.yml
+vault_mysql_app_password: "CHANGE_ME"

@@ -1,2 +1,6 @@
 ---
-nginx_server_name: "{{ inventory_hostname }}"
+apache2_vhosts:
+  - name: app
+    server_name: "{{ inventory_hostname }}"
+    document_root: /var/www/app
+    allow_override: All

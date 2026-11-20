@@ -1,0 +1,15 @@
+---
+apache2_modules:
+  - rewrite
+  - headers
+  - expires
+apache2_disable_default_site: true
+apache2_vhosts:
+  - name: default
+    server_name: "{{ inventory_hostname }}"
+    server_aliases: []
+    document_root: /var/www/html
+    port: 80
+    allow_override: All
+apache2_server_tokens: Prod
+apache2_server_signature: "Off"

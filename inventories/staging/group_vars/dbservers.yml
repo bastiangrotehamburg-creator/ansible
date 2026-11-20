@@ -1,0 +1,10 @@
+---
+mysql_bind_address: 127.0.0.1
+mysql_databases:
+  - name: app
+mysql_users:
+  - name: app
+    host: localhost
+    # Passwort in inventories/<env>/group_vars/all/vault.yml (ansible-vault) ablegen
+    password: "{{ vault_mysql_app_password }}"
+    priv: "app.*:ALL"

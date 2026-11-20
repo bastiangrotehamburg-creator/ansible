@@ -1,0 +1,17 @@
+# {{ ansible_managed }}
+<VirtualHost *:{{ item.port | default(80) }}>
+    ServerName {{ item.server_name }}
+{% for alias in item.server_aliases | default([]) %}
+    ServerAlias {{ alias }}
+{% endfor %}
+    DocumentRoot {{ item.document_root }}
+
+    <Directory {{ item.document_root }}>
+        Options -Indexes +FollowSymLinks
+        AllowOverride {{ item.allow_override | default('None') }}
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/{{ item.name }}_error.log
+    CustomLog ${APACHE_LOG_DIR}/{{ item.name }}_access.log combined
+</VirtualHost>

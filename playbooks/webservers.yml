@@ -1,7 +1,9 @@
 ---
-- name: Webserver einrichten
+- name: Apache2 und PHP installieren
   hosts: webservers
   become: true
   roles:
-    - role: nginx
-      tags: [nginx]
+    - role: apache2
+      tags: [apache2]
+    - role: php
+      tags: [php]

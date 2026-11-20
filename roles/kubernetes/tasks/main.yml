@@ -1,0 +1,20 @@
+---
+- name: Voraussetzungen (Swap, Kernel-Module, Sysctl)
+  ansible.builtin.import_tasks: prerequisites.yml
+
+- name: Container-Runtime (containerd)
+  ansible.builtin.import_tasks: containerd.yml
+
+- name: Kubernetes-Paketquelle
+  ansible.builtin.import_tasks: repository.yml
+
+- name: Kubernetes-Pakete installieren
+  ansible.builtin.import_tasks: packages.yml
+
+- name: Control-Plane initialisieren
+  ansible.builtin.include_tasks: control_plane.yml
+  when: inventory_hostname in groups[kubernetes_control_plane_group]
+
+- name: Worker dem Cluster hinzufügen
+  ansible.builtin.include_tasks: worker.yml
+  when: inventory_hostname not in groups[kubernetes_control_plane_group]

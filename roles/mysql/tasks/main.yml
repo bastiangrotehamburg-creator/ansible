@@ -1,0 +1,64 @@
+---
+- name: MySQL-Server installieren
+  ansible.builtin.apt:
+    name: "{{ mysql_packages + ['python3-pymysql'] }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: MySQL-Konfiguration setzen
+  ansible.builtin.template:
+    src: 99-ansible.cnf.j2
+    dest: "{{ '/etc/mysql/mysql.conf.d/99-ansible.cnf' if ansible_facts['distribution'] == 'Ubuntu' else '/etc/mysql/mariadb.conf.d/99-ansible.cnf' }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart mysql
+
+- name: MySQL starten und aktivieren
+  ansible.builtin.service:
+    name: "{{ mysql_service }}"
+    state: started
+    enabled: true
+
+- name: Warten, bis der MySQL-Socket bereit ist
+  ansible.builtin.wait_for:
+    path: "{{ mysql_socket }}"
+    timeout: 60
+
+- name: Anonyme Benutzer entfernen
+  ansible.mysql.mysql_user:
+    name: ""
+    host_all: true
+    state: absent
+    login_unix_socket: "{{ mysql_socket }}"
+
+- name: Test-Datenbank entfernen
+  ansible.mysql.mysql_db:
+    name: test
+    state: absent
+    login_unix_socket: "{{ mysql_socket }}"
+
+- name: Datenbanken anlegen
+  ansible.mysql.mysql_db:
+    name: "{{ item.name }}"
+    encoding: "{{ item.encoding | default('utf8mb4') }}"
+    collation: "{{ item.collation | default('utf8mb4_unicode_ci') }}"
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  loop: "{{ mysql_databases }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Benutzer anlegen
+  ansible.mysql.mysql_user:
+    name: "{{ item.name }}"
+    host: "{{ item.host | default('localhost') }}"
+    password: "{{ item.password }}"
+    priv: "{{ item.priv }}"
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  loop: "{{ mysql_users }}"
+  loop_control:
+    label: "{{ item.name }}@{{ item.host | default('localhost') }}"
+  no_log: true

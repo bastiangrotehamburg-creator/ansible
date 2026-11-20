@@ -1,0 +1,9 @@
+---
+- name: PHP installieren
+  hosts: webservers
+  become: true
+  roles:
+    - role: apache2
+      tags: [apache2]
+    - role: php
+      tags: [php]

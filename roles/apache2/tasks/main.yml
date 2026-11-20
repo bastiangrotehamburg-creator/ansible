@@ -1,0 +1,76 @@
+---
+- name: Apache2 installieren
+  ansible.builtin.apt:
+    name: apache2
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Apache2-Module aktivieren
+  community.general.apache2_module:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ apache2_modules | union(['headers']) }}"
+  notify: Restart apache2
+
+- name: Sicherheits-Konfiguration ablegen
+  ansible.builtin.template:
+    src: security.conf.j2
+    dest: /etc/apache2/conf-available/zz-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload apache2
+
+- name: Sicherheits-Konfiguration aktivieren
+  ansible.builtin.file:
+    src: ../conf-available/zz-hardening.conf
+    dest: /etc/apache2/conf-enabled/zz-hardening.conf
+    state: link
+  notify: Reload apache2
+
+- name: DocumentRoots anlegen
+  ansible.builtin.file:
+    path: "{{ item.document_root }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+  loop: "{{ apache2_vhosts }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: VirtualHosts konfigurieren
+  ansible.builtin.template:
+    src: vhost.conf.j2
+    dest: "/etc/apache2/sites-available/{{ item.name }}.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ apache2_vhosts }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Reload apache2
+
+- name: VirtualHosts aktivieren
+  ansible.builtin.file:
+    src: "../sites-available/{{ item.name }}.conf"
+    dest: "/etc/apache2/sites-enabled/{{ item.name }}.conf"
+    state: link
+  loop: "{{ apache2_vhosts }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Reload apache2
+
+- name: Default-Site deaktivieren
+  ansible.builtin.file:
+    path: /etc/apache2/sites-enabled/000-default.conf
+    state: absent
+  when: apache2_disable_default_site | bool
+  notify: Reload apache2
+
+- name: Apache2 starten und aktivieren
+  ansible.builtin.service:
+    name: apache2
+    state: started
+    enabled: true

@@ -1,0 +1,16 @@
+---
+# Minor-Version (Repo pkgs.k8s.io ist pro Minor-Version getrennt).
+# Upgrade: nur eine Minor-Version pro Schritt erhöhen (z. B. 1.34 -> 1.35).
+kubernetes_version: "1.34"
+kubernetes_packages:
+  - kubelet
+  - kubeadm
+  - kubectl
+kubernetes_pod_network_cidr: 10.244.0.0/16
+kubernetes_cni_manifest: https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+kubernetes_control_plane_endpoint: ""
+kubernetes_node_name: "{{ ansible_facts['hostname'] | lower }}"
+kubernetes_admin_conf: /etc/kubernetes/admin.conf
+kubernetes_kubeconfig_user: "{{ ansible_user | default('root') }}"
+kubernetes_control_plane_group: k8s_control_plane
+kubernetes_drain_timeout: 300s

@@ -1,0 +1,7 @@
+---
+- name: MySQL installieren
+  hosts: dbservers
+  become: true
+  roles:
+    - role: mysql
+      tags: [mysql]

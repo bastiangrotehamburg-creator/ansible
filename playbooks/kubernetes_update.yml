@@ -1,0 +1,22 @@
+---
+# Rolling Upgrade auf kubernetes_version (group_vars/kubernetes.yml).
+# Pro Lauf nur eine Minor-Version erhöhen, z. B. 1.34 -> 1.35.
+- name: Kubernetes Control-Plane aktualisieren
+  hosts: k8s_control_plane
+  become: true
+  serial: 1
+  tasks:
+    - name: Upgrade durchführen
+      ansible.builtin.include_role:
+        name: kubernetes
+        tasks_from: upgrade
+
+- name: Kubernetes Worker aktualisieren
+  hosts: k8s_workers
+  become: true
+  serial: 1
+  tasks:
+    - name: Upgrade durchführen
+      ansible.builtin.include_role:
+        name: kubernetes
+        tasks_from: upgrade

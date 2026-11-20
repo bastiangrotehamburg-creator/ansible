@@ -1,0 +1,95 @@
+---
+# Rolling Upgrade eines Nodes auf kubernetes_version (eine Minor-Version pro Lauf).
+# Wird vom Playbook kubernetes_update.yml mit serial: 1 aufgerufen.
+
+- name: Aktuelle Kubelet-Version ermitteln
+  ansible.builtin.command: kubelet --version
+  register: kubernetes_kubelet_version
+  changed_when: false
+  check_mode: false
+
+- name: Node-Upgrade, falls nicht schon auf Zielversion {{ kubernetes_version }}
+  when: ("v" ~ kubernetes_version ~ ".") not in kubernetes_kubelet_version.stdout
+  block:
+    - name: Paketquelle umstellen auf {{ kubernetes_version }}
+      ansible.builtin.import_tasks: repository.yml
+
+    - name: Kubeadm entsperren
+      ansible.builtin.dpkg_selections:
+        name: kubeadm
+        selection: install
+
+    - name: Kubeadm aktualisieren
+      ansible.builtin.apt:
+        name: "kubeadm={{ kubernetes_version }}.*"
+        state: present
+
+    - name: Kubeadm wieder sperren
+      ansible.builtin.dpkg_selections:
+        name: kubeadm
+        selection: hold
+
+    - name: Zielversion aus kubeadm lesen
+      ansible.builtin.command: kubeadm version -o short
+      register: kubernetes_target_version
+      changed_when: false
+
+    - name: Cluster-Upgrade auf erstem Control-Plane-Node
+      ansible.builtin.command: kubeadm upgrade apply -y {{ kubernetes_target_version.stdout }}
+      when: inventory_hostname == groups[kubernetes_control_plane_group][0]
+      changed_when: true
+
+    - name: Node-Konfiguration auf weiteren Nodes aktualisieren
+      ansible.builtin.command: kubeadm upgrade node
+      when: inventory_hostname != groups[kubernetes_control_plane_group][0]
+      changed_when: true
+
+    - name: Node leeren (drain)
+      ansible.builtin.command: >-
+        kubectl drain {{ kubernetes_node_name }}
+        --ignore-daemonsets --delete-emptydir-data --timeout={{ kubernetes_drain_timeout }}
+      environment:
+        KUBECONFIG: "{{ kubernetes_admin_conf }}"
+      delegate_to: "{{ groups[kubernetes_control_plane_group][0] }}"
+      changed_when: true
+
+    - name: Kubelet und kubectl entsperren
+      ansible.builtin.dpkg_selections:
+        name: "{{ item }}"
+        selection: install
+      loop: [kubelet, kubectl]
+
+    - name: Kubelet und kubectl aktualisieren
+      ansible.builtin.apt:
+        name:
+          - "kubelet={{ kubernetes_version }}.*"
+          - "kubectl={{ kubernetes_version }}.*"
+        state: present
+
+    - name: Kubelet und kubectl wieder sperren
+      ansible.builtin.dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop: [kubelet, kubectl]
+
+    - name: Kubelet neu starten
+      ansible.builtin.systemd_service:
+        name: kubelet
+        state: restarted
+        daemon_reload: true
+
+    - name: Warten, bis der Node wieder Ready ist
+      ansible.builtin.command: >-
+        kubectl wait --for=condition=Ready node/{{ kubernetes_node_name }} --timeout=300s
+      environment:
+        KUBECONFIG: "{{ kubernetes_admin_conf }}"
+      delegate_to: "{{ groups[kubernetes_control_plane_group][0] }}"
+      changed_when: false
+
+  always:
+    - name: Node wieder freigeben (uncordon)
+      ansible.builtin.command: kubectl uncordon {{ kubernetes_node_name }}
+      environment:
+        KUBECONFIG: "{{ kubernetes_admin_conf }}"
+      delegate_to: "{{ groups[kubernetes_control_plane_group][0] }}"
+      changed_when: true

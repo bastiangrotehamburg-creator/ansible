@@ -1,0 +1,35 @@
+---
+# System-Updates (apt) für alle Nicht-Kubernetes-Hosts, rollend mit Reboot bei Bedarf.
+# Kubernetes-Pakete sind per "hold" gesperrt -> dafür kubernetes_update.yml nutzen.
+- name: System-Updates einspielen
+  hosts: "all:!kubernetes"
+  become: true
+  serial: "{{ update_serial | default('50%') }}"
+  vars:
+    update_reboot: true
+  tasks:
+    - name: Pakete aktualisieren
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+        autoremove: true
+        autoclean: true
+      register: update_result
+
+    - name: Aktualisierte Pakete anzeigen
+      ansible.builtin.debug:
+        msg: "{{ update_result.stdout_lines | default([]) | select('match', '^Inst ') | list }}"
+      when: update_result is changed # noqa: no-handler
+
+    - name: Prüfen, ob ein Neustart nötig ist
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: update_reboot_required
+
+    - name: Neustart durchführen
+      ansible.builtin.reboot:
+        msg: Neustart nach Ansible-Updates
+        reboot_timeout: 600
+      when:
+        - update_reboot | bool
+        - update_reboot_required.stat.exists

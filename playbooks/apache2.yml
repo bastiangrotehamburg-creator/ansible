@@ -1,0 +1,7 @@
+---
+- name: Apache2 installieren
+  hosts: webservers
+  become: true
+  roles:
+    - role: apache2
+      tags: [apache2]

@@ -1,0 +1,42 @@
+---
+- name: Containerd installieren
+  ansible.builtin.apt:
+    name: containerd
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Prüfen, ob containerd-Konfiguration existiert
+  ansible.builtin.stat:
+    path: /etc/containerd/config.toml
+  register: kubernetes_containerd_config
+
+- name: Konfigurationsverzeichnis anlegen
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Default-Konfiguration erzeugen
+  ansible.builtin.shell: containerd config default > /etc/containerd/config.toml
+  when: not kubernetes_containerd_config.stat.exists
+  changed_when: true
+  notify: Restart containerd
+
+- name: Systemd-Cgroup-Treiber aktivieren
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: 'SystemdCgroup = false'
+    replace: 'SystemdCgroup = true'
+  notify: Restart containerd
+
+- name: Containerd starten und aktivieren
+  ansible.builtin.service:
+    name: containerd
+    state: started
+    enabled: true
+
+- name: Containerd-Neustart sofort ausführen
+  ansible.builtin.meta: flush_handlers

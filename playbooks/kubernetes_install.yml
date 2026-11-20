@@ -1,0 +1,17 @@
+---
+# Installiert einen Kubernetes-Cluster mit kubeadm (1 Control-Plane + Worker).
+# Control-Plane und Worker müssen im selben Lauf sein (Join-Befehl).
+- name: Kubernetes installieren
+  hosts: kubernetes
+  become: true
+  # Control-Plane zuerst, damit der Join-Befehl für die Worker bereitsteht
+  order: sorted
+  pre_tasks:
+    - name: Prüfen, ob genau ein Control-Plane-Node definiert ist
+      ansible.builtin.assert:
+        that: groups['k8s_control_plane'] | length == 1
+        fail_msg: Diese Rolle unterstützt genau einen Control-Plane-Node.
+      run_once: true
+  roles:
+    - role: kubernetes
+      tags: [kubernetes]

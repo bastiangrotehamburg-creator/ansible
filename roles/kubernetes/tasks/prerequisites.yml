@@ -1,0 +1,40 @@
+---
+- name: Swap sofort deaktivieren
+  ansible.builtin.command: swapoff -a
+  when: ansible_facts['swaptotal_mb'] | int > 0
+  changed_when: true
+
+- name: Swap dauerhaft in fstab deaktivieren
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#\s]+\s+[^\s]+\s+swap\s+.*)$'
+    replace: '# \1'
+
+- name: Kernel-Module dauerhaft laden
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/kubernetes.conf
+    content: |
+      overlay
+      br_netfilter
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Kernel-Module jetzt laden
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: Sysctl für Kubernetes-Netzwerk setzen
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: "1"
+    sysctl_file: /etc/sysctl.d/99-kubernetes.conf
+    reload: true
+  loop:
+    - net.bridge.bridge-nf-call-iptables
+    - net.bridge.bridge-nf-call-ip6tables
+    - net.ipv4.ip_forward

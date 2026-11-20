@@ -1,0 +1,21 @@
+---
+# Ubuntu: Oracle MySQL; Debian: MariaDB (MySQL-kompatibel)
+mysql_packages: "{{ ['mysql-server'] if ansible_facts['distribution'] == 'Ubuntu' else ['default-mysql-server'] }}"
+mysql_service: "{{ 'mysql' if ansible_facts['distribution'] == 'Ubuntu' else 'mariadb' }}"
+mysql_socket: /run/mysqld/mysqld.sock
+mysql_bind_address: 127.0.0.1
+mysql_port: 3306
+mysql_settings:
+  max_connections: 200
+  innodb_buffer_pool_size: 256M
+
+# Beispiel:
+# mysql_databases:
+#   - name: app
+# mysql_users:
+#   - name: app
+#     password: "{{ vault_mysql_app_password }}"
+#     priv: "app.*:ALL"
+#     host: localhost
+mysql_databases: []
+mysql_users: []

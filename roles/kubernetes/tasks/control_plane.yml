@@ -1,0 +1,46 @@
+---
+- name: Prüfen, ob der Cluster bereits initialisiert ist
+  ansible.builtin.stat:
+    path: "{{ kubernetes_admin_conf }}"
+  register: kubernetes_admin_conf_stat
+
+- name: Cluster mit kubeadm initialisieren
+  ansible.builtin.command: >-
+    kubeadm init
+    --pod-network-cidr={{ kubernetes_pod_network_cidr }}
+    --node-name={{ kubernetes_node_name }}
+    {% if kubernetes_control_plane_endpoint %}--control-plane-endpoint={{ kubernetes_control_plane_endpoint }}{% endif %}
+  when: not kubernetes_admin_conf_stat.stat.exists
+  changed_when: true
+
+- name: Home-Verzeichnis des Kubeconfig-Benutzers ermitteln
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ kubernetes_kubeconfig_user }}"
+
+- name: Kubeconfig-Verzeichnis anlegen
+  ansible.builtin.file:
+    path: "{{ ansible_facts['getent_passwd'][kubernetes_kubeconfig_user][4] }}/.kube"
+    state: directory
+    owner: "{{ kubernetes_kubeconfig_user }}"
+    mode: "0700"
+
+- name: Kubeconfig für den Benutzer bereitstellen
+  ansible.builtin.copy:
+    src: "{{ kubernetes_admin_conf }}"
+    dest: "{{ ansible_facts['getent_passwd'][kubernetes_kubeconfig_user][4] }}/.kube/config"
+    remote_src: true
+    owner: "{{ kubernetes_kubeconfig_user }}"
+    mode: "0600"
+
+- name: CNI-Netzwerk-Plugin installieren
+  ansible.builtin.command: kubectl apply -f {{ kubernetes_cni_manifest }}
+  environment:
+    KUBECONFIG: "{{ kubernetes_admin_conf }}"
+  register: kubernetes_cni_apply
+  changed_when: "'created' in kubernetes_cni_apply.stdout or 'configured' in kubernetes_cni_apply.stdout"
+
+- name: Join-Befehl für Worker erzeugen
+  ansible.builtin.command: kubeadm token create --print-join-command
+  register: kubernetes_join_command
+  changed_when: false

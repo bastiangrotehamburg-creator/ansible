@@ -2,5 +2,11 @@
 - name: Basis-Konfiguration
   ansible.builtin.import_playbook: common.yml
 
-- name: Webserver
+- name: Webserver (Apache2 + PHP)
   ansible.builtin.import_playbook: webservers.yml
+
+- name: Datenbankserver (MySQL)
+  ansible.builtin.import_playbook: dbservers.yml
+
+- name: Kubernetes-Cluster
+  ansible.builtin.import_playbook: kubernetes_install.yml

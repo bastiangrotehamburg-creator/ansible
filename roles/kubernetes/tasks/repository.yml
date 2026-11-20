@@ -1,0 +1,24 @@
+---
+- name: Abhängigkeiten für die Paketquelle installieren
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gpg
+    state: present
+
+- name: Kubernetes-Paketquelle einrichten (Version {{ kubernetes_version }})
+  ansible.builtin.deb822_repository:
+    name: kubernetes
+    types: deb
+    uris: "https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/"
+    suites: /
+    signed_by: "https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/Release.key"
+    state: present
+  register: kubernetes_repo
+
+- name: Apt-Cache nach Repo-Änderung aktualisieren
+  ansible.builtin.apt:
+    update_cache: true
+  when: kubernetes_repo is changed # noqa: no-handler

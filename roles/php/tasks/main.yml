@@ -1,0 +1,24 @@
+---
+- name: PHP und Erweiterungen installieren
+  ansible.builtin.apt:
+    name: "{{ php_packages + php_extensions }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  notify: Restart apache2 (php)
+
+- name: PHP-Version ermitteln
+  ansible.builtin.command: php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;'
+  register: php_version_cmd
+  changed_when: false
+  check_mode: false
+
+- name: PHP-Einstellungen setzen
+  ansible.builtin.template:
+    src: 99-ansible.ini.j2
+    dest: "/etc/php/{{ php_version_cmd.stdout }}/{{ item }}/conf.d/99-ansible.ini"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ php_sapis }}"
+  notify: Restart apache2 (php)

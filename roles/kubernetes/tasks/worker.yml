@@ -1,0 +1,12 @@
+---
+- name: Prüfen, ob der Node bereits im Cluster ist
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubernetes_kubelet_conf
+
+- name: Node dem Cluster hinzufügen
+  ansible.builtin.command: >-
+    {{ hostvars[groups[kubernetes_control_plane_group][0]]['kubernetes_join_command']['stdout'] }}
+    --node-name={{ kubernetes_node_name }}
+  when: not kubernetes_kubelet_conf.stat.exists
+  changed_when: true

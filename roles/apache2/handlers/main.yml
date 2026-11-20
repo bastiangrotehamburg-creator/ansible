@@ -1,0 +1,17 @@
+---
+- name: Restart apache2
+  ansible.builtin.service:
+    name: apache2
+    state: restarted
+  listen: Restart apache2
+
+- name: Configtest apache2
+  ansible.builtin.command: apache2ctl configtest
+  changed_when: false
+  listen: Reload apache2
+
+- name: Reload apache2
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+  listen: Reload apache2
