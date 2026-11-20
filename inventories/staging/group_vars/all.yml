@@ -1,0 +1,8 @@
+---
+ansible_user: deploy
+env_name: staging
+
+common_timezone: Europe/Berlin
+common_admin_users:
+  - name: deploy
+    ssh_keys: []

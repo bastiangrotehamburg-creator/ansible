@@ -1,0 +1,6 @@
+---
+- name: Basis-Konfiguration
+  ansible.builtin.import_playbook: common.yml
+
+- name: Webserver
+  ansible.builtin.import_playbook: webservers.yml

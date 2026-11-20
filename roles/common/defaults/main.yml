@@ -1,0 +1,11 @@
+---
+common_packages:
+  - curl
+  - vim
+  - htop
+  - git
+  - ca-certificates
+common_timezone: Etc/UTC
+common_admin_users: []
+common_admin_group: sudo
+common_unattended_upgrades: true

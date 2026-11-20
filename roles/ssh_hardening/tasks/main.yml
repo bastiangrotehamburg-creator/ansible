@@ -1,0 +1,19 @@
+---
+- name: Sicherheitsprüfung - mindestens ein Admin-Key vorhanden
+  ansible.builtin.assert:
+    that: >-
+      ssh_hardening_password_authentication == 'yes' or
+      (common_admin_users | default([]) | map(attribute='ssh_keys') | flatten | length > 0)
+    fail_msg: >-
+      Passwort-Login würde deaktiviert, aber in common_admin_users ist kein SSH-Key
+      hinterlegt. Abbruch, um ein Aussperren zu verhindern.
+
+- name: SSH-Härtung konfigurieren
+  ansible.builtin.template:
+    src: hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/10-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Restart sshd

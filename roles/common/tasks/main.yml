@@ -1,0 +1,41 @@
+---
+- name: Apt-Cache aktualisieren
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Basis-Pakete installieren
+  ansible.builtin.package:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: Zeitzone setzen
+  community.general.timezone:
+    name: "{{ common_timezone }}"
+
+- name: Admin-Benutzer anlegen
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    groups: "{{ common_admin_group }}"
+    append: true
+    shell: /bin/bash
+    state: present
+  loop: "{{ common_admin_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: SSH-Keys der Admin-Benutzer hinterlegen
+  ansible.posix.authorized_key:
+    user: "{{ item.0.name }}"
+    key: "{{ item.1 }}"
+    state: present
+  loop: "{{ common_admin_users | subelements('ssh_keys', skip_missing=True) }}"
+  loop_control:
+    label: "{{ item.0.name }}"
+
+- name: Automatische Sicherheitsupdates einrichten
+  ansible.builtin.include_tasks: unattended_upgrades.yml
+  when:
+    - common_unattended_upgrades | bool
+    - ansible_facts['os_family'] == 'Debian'
