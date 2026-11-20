@@ -1,0 +1,11 @@
+---
+- name: Let's-Encrypt-Zertifikate ausstellen und HTTPS aktivieren
+  hosts: webservers
+  become: true
+  roles:
+    - role: letsencrypt
+  post_tasks:
+    - name: HTTPS-VirtualHosts aktivieren
+      ansible.builtin.include_role:
+        name: apache2
+        tasks_from: vhosts

@@ -12,8 +12,10 @@ inventories/
   staging/ | production/      # hosts.yml + group_vars (all, webservers, dbservers, kubernetes)
 playbooks/
   site.yml                    # Alles installieren
-  common.yml                  # Basis für alle Hosts (Pakete, User, SSH-Härtung)
-  webservers.yml              # Apache2 + PHP   (auch einzeln: apache2.yml, php.yml)
+  common.yml                  # Basis für alle Hosts (Pakete, User, SSH-Härtung, Firewall)
+  firewall.yml                # Nur Firewall (UFW)
+  webservers.yml              # Apache2 + PHP + Let's Encrypt (einzeln: apache2.yml, php.yml)
+  letsencrypt.yml             # Nur Zertifikate ausstellen + HTTPS aktivieren
   dbservers.yml / mysql.yml   # MySQL
   kubernetes_install.yml      # Kubernetes-Cluster mit kubeadm installieren
   kubernetes_update.yml       # Kubernetes Rolling Upgrade (Node für Node)
@@ -21,7 +23,9 @@ playbooks/
 roles/
   common/                     # Pakete, Zeitzone, Admin-User + SSH-Keys, Auto-Updates
   ssh_hardening/              # sshd: kein Root-/Passwort-Login (mit Aussperr-Schutz)
-  apache2/                    # Apache2, Module, VirtualHosts, Security-Header
+  firewall/                   # UFW: default deny, SSH zuerst, Regeln pro Gruppe
+  letsencrypt/                # certbot (webroot), Auto-Renewal, Reload-Hook
+  apache2/                    # Apache2, Module, VirtualHosts, HTTPS/TLS, Security-Header
   php/                        # PHP + Erweiterungen, php.ini-Einstellungen (mod_php)
   mysql/                      # MySQL (Ubuntu) bzw. MariaDB (Debian), DBs + User
   kubernetes/                 # containerd, kubeadm/kubelet/kubectl, Init, Join, Upgrade
@@ -59,6 +63,34 @@ ansible-playbook -i inventories/production/hosts.yml playbooks/site.yml --ask-va
 # Lint
 ansible-lint
 ```
+
+## Firewall (UFW)
+
+- Läuft über `common.yml` auf **allen** Hosts. SSH wird immer zuerst erlaubt (mit Rate-Limit),
+  danach gilt: eingehend alles blockiert, ausgehend alles erlaubt.
+- SSH nur aus bestimmten Netzen: `firewall_ssh_sources: ["203.0.113.0/24"]`.
+- Regeln werden aus allen Variablen `firewall_rules_*` eingesammelt – jede Gruppe kann eigene beisteuern:
+
+  ```yaml
+  firewall_rules_web:
+    - { port: "80,443", proto: tcp, comment: "HTTP/HTTPS" }
+    - { port: "3306", proto: tcp, from: ["10.0.0.5", "10.0.0.6"], comment: "MySQL" }
+  ```
+
+- Bereits vorkonfiguriert: Webserver (80/443), Kubernetes (API 6443, etcd, kubelet, Flannel,
+  NodePorts – interne Ports nur von Cluster-Nodes), MySQL-Beispiel in `group_vars/dbservers.yml`.
+- Regeln werden nur hinzugefügt, nie automatisch gelöscht (`ufw delete` bei Bedarf manuell).
+
+## Let's Encrypt / HTTPS
+
+- VirtualHost in `group_vars/webservers.yml` mit `letsencrypt: true` markieren, `letsencrypt_email` setzen.
+- DNS des `server_name` (und `server_aliases`) muss auf den Server zeigen, Port 80 muss offen sein.
+- Ablauf in `webservers.yml`: Apache (HTTP) → certbot holt Zertifikat per Webroot → VirtualHost wird
+  auf HTTPS umgestellt, HTTP leitet per 301 weiter (außer `/.well-known/acme-challenge/`).
+- Staging-Inventory nutzt die Let's-Encrypt-**Test-CA** (`letsencrypt_staging: true`): keine
+  Rate-Limits, aber Browser-Warnung. In Production echte Zertifikate.
+- Erneuerung automatisch über `certbot.timer`, Apache wird danach per Deploy-Hook neu geladen.
+- TLS 1.2/1.3 (Mozilla „intermediate“). HSTS per `apache2_hsts: true`, sobald HTTPS stabil läuft.
 
 ## Kubernetes
 

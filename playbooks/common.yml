@@ -7,3 +7,5 @@
       tags: [common]
     - role: ssh_hardening
       tags: [ssh]
+    - role: firewall
+      tags: [firewall]

@@ -1,0 +1,13 @@
+---
+galaxy_info:
+  role_name: letsencrypt
+  author: bastiangrotehamburg-creator
+  description: Let's Encrypt certificates via certbot (webroot)
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+dependencies: []

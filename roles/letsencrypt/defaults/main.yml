@@ -1,0 +1,12 @@
+---
+# Pflicht: E-Mail für Ablauf-Warnungen von Let's Encrypt
+letsencrypt_email: ""
+# true = Staging-CA (keine Rate-Limits, Zertifikate NICHT vertrauenswürdig) – für Tests
+letsencrypt_staging: false
+letsencrypt_webroot: /var/www/letsencrypt
+letsencrypt_key_type: ecdsa
+# Zertifikate: Standard = alle apache2_vhosts mit "letsencrypt: true"
+# (es werden nur server_name und server_aliases verwendet)
+letsencrypt_certs: "{{ apache2_vhosts | default([]) | selectattr('letsencrypt', 'defined') | selectattr('letsencrypt') | list }}"
+letsencrypt_reload_services:
+  - apache2

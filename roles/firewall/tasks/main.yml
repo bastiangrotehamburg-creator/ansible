@@ -1,0 +1,59 @@
+---
+- name: UFW installieren
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Regeln aus allen firewall_rules_*-Variablen zusammenführen
+  ansible.builtin.set_fact:
+    firewall_rules_flat: >-
+      {%- set out = [] -%}
+      {%- for var in query('ansible.builtin.varnames', '^firewall_rules_') | sort -%}
+      {%-   for rule in lookup('ansible.builtin.vars', var) -%}
+      {%-     set sources = rule['from'] if (rule['from'] is defined and rule['from'] is not string) else [rule['from'] | default('any')] -%}
+      {%-     for src in sources -%}
+      {%-       set _ = out.append(rule | combine({'from': src})) -%}
+      {%-     endfor -%}
+      {%-   endfor -%}
+      {%- endfor -%}
+      {{ out }}
+
+- name: SSH zuerst erlauben (Schutz vor Aussperren)
+  community.general.ufw:
+    rule: limit
+    port: "{{ firewall_ssh_port | string }}"
+    proto: tcp
+    from_ip: "{{ item }}"
+    comment: SSH
+  loop: "{{ firewall_ssh_sources if firewall_ssh_sources | length > 0 else ['any'] }}"
+
+- name: Firewall-Regeln anwenden
+  community.general.ufw:
+    rule: "{{ item.rule | default('allow') }}"
+    port: "{{ item.port | string if item.port is defined else omit }}"
+    proto: "{{ item.proto | default('tcp' if item.port is defined else 'any') }}"
+    from_ip: "{{ item.from }}"
+    direction: in
+    comment: "{{ item.comment | default(omit) }}"
+  loop: "{{ firewall_rules_flat }}"
+  loop_control:
+    label: "{{ item.comment | default('') }} {{ item.port | default('*') }}/{{ item.proto | default('tcp') }} von {{ item.from }}"
+
+- name: Standard-Richtlinien setzen
+  community.general.ufw:
+    default: "{{ item.policy }}"
+    direction: "{{ item.direction }}"
+  loop:
+    - { direction: incoming, policy: "{{ firewall_default_incoming }}" }
+    - { direction: outgoing, policy: "{{ firewall_default_outgoing }}" }
+    - { direction: routed, policy: "{{ firewall_default_routed }}" }
+
+- name: Logging setzen
+  community.general.ufw:
+    logging: "{{ firewall_logging }}"
+
+- name: UFW aktivieren
+  community.general.ufw:
+    state: "{{ 'enabled' if firewall_enabled | bool else 'disabled' }}"

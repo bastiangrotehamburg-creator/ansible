@@ -1,0 +1,7 @@
+---
+- name: Firewall (UFW) konfigurieren
+  hosts: all
+  become: true
+  roles:
+    - role: firewall
+      tags: [firewall]

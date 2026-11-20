@@ -8,3 +8,12 @@ mysql_users:
     # Passwort in inventories/<env>/group_vars/all/vault.yml (ansible-vault) ablegen
     password: "{{ vault_mysql_app_password }}"
     priv: "app.*:ALL"
+
+# MySQL ist nur lokal erreichbar (bind 127.0.0.1). Für Zugriff der Webserver:
+#   mysql_bind_address: 0.0.0.0
+#   firewall_rules_mysql:
+#     - port: "3306"
+#       proto: tcp
+#       from: "{{ groups['webservers'] | map('extract', hostvars, 'ansible_host') | list }}"
+#       comment: MySQL von Webservern
+#   (und mysql_users[].host auf die IP/das Netz der Webserver setzen)

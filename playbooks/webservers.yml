@@ -1,5 +1,5 @@
 ---
-- name: Apache2 und PHP installieren
+- name: Apache2, PHP und Let's Encrypt
   hosts: webservers
   become: true
   roles:
@@ -7,3 +7,11 @@
       tags: [apache2]
     - role: php
       tags: [php]
+    - role: letsencrypt
+      tags: [letsencrypt]
+  post_tasks:
+    - name: HTTPS-VirtualHosts aktivieren (nach Zertifikatsausstellung)
+      ansible.builtin.include_role:
+        name: apache2
+        tasks_from: vhosts
+      tags: [apache2, letsencrypt]

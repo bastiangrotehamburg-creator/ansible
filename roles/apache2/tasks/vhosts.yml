@@ -1,0 +1,39 @@
+---
+# Wird nach der letsencrypt-Rolle erneut aufgerufen, um HTTPS zu aktivieren.
+- name: Vorhandene Let's-Encrypt-Zertifikate prüfen
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ item.server_name }}/fullchain.pem"
+  loop: "{{ apache2_vhosts | selectattr('letsencrypt', 'defined') | selectattr('letsencrypt') | list }}"
+  loop_control:
+    label: "{{ item.server_name }}"
+  register: apache2_cert_stats
+
+- name: Liste der VirtualHosts mit Zertifikat bilden
+  ansible.builtin.set_fact:
+    apache2_existing_certs: >-
+      {{ apache2_cert_stats.results | selectattr('stat.exists') | map(attribute='item.server_name') | list }}
+
+- name: VirtualHosts konfigurieren
+  ansible.builtin.template:
+    src: vhost.conf.j2
+    dest: "/etc/apache2/sites-available/{{ item.name }}.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ apache2_vhosts }}"
+  loop_control:
+    label: "{{ item.name }}{{ ' (HTTPS)' if item.server_name in apache2_existing_certs else '' }}"
+  notify: Reload apache2
+
+- name: VirtualHosts aktivieren
+  ansible.builtin.file:
+    src: "../sites-available/{{ item.name }}.conf"
+    dest: "/etc/apache2/sites-enabled/{{ item.name }}.conf"
+    state: link
+  loop: "{{ apache2_vhosts }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Reload apache2
+
+- name: Konfiguration sofort aktivieren
+  ansible.builtin.meta: flush_handlers

@@ -3,13 +3,19 @@ apache2_modules:
   - rewrite
   - headers
   - expires
+  - ssl
 apache2_disable_default_site: true
+# letsencrypt: true -> HTTPS-VirtualHost + Redirect, sobald das Zertifikat existiert
 apache2_vhosts:
   - name: default
     server_name: "{{ inventory_hostname }}"
     server_aliases: []
     document_root: /var/www/html
-    port: 80
     allow_override: All
+    letsencrypt: false
 apache2_server_tokens: Prod
 apache2_server_signature: "Off"
+apache2_acme_webroot: "{{ letsencrypt_webroot | default('/var/www/letsencrypt') }}"
+# HSTS nur aktivieren, wenn HTTPS dauerhaft funktioniert (Browser merken sich das!)
+apache2_hsts: false
+apache2_hsts_max_age: 31536000

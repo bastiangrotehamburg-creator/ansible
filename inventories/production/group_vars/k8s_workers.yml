@@ -1,0 +1,3 @@
+---
+firewall_rules_k8s_workers:
+  - { port: "30000:32767", proto: tcp, comment: "NodePort-Services" }

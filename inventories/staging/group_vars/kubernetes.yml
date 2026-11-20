@@ -1,3 +1,13 @@
 ---
 kubernetes_version: "1.34"
 kubernetes_pod_network_cidr: 10.244.0.0/16
+
+# --- Firewall ---
+# Pod-Traffic wird über den Host geroutet -> routed muss erlaubt sein
+firewall_default_routed: allow
+kubernetes_node_ips: "{{ groups['kubernetes'] | map('extract', hostvars, 'ansible_host') | list }}"
+firewall_rules_k8s_nodes:
+  - { port: "10250", proto: tcp, from: "{{ kubernetes_node_ips }}", comment: "kubelet API" }
+  - { port: "10256", proto: tcp, from: "{{ kubernetes_node_ips }}", comment: "kube-proxy" }
+  - { port: "8472", proto: udp, from: "{{ kubernetes_node_ips }}", comment: "Flannel VXLAN" }
+  - { from: "{{ kubernetes_pod_network_cidr }}", comment: "Pod-Netz" }

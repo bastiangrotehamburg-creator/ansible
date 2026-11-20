@@ -2,5 +2,15 @@
 apache2_vhosts:
   - name: app
     server_name: "{{ inventory_hostname }}"
+    server_aliases: []
     document_root: /var/www/app
     allow_override: All
+    letsencrypt: true
+
+# Let's Encrypt
+letsencrypt_email: admin@example.com
+letsencrypt_staging: true   # true = Test-CA (nicht vertrauenswürdig, keine Rate-Limits)
+apache2_hsts: false            # erst einschalten, wenn HTTPS stabil läuft
+
+firewall_rules_web:
+  - { port: "80,443", proto: tcp, comment: "HTTP/HTTPS" }

@@ -1,0 +1,6 @@
+---
+firewall_rules_k8s_control_plane:
+  - { port: "6443", proto: tcp, comment: "Kubernetes API" }
+  - { port: "2379:2380", proto: tcp, from: "{{ groups['k8s_control_plane'] | map('extract', hostvars, 'ansible_host') | list }}", comment: "etcd" }
+  - { port: "10257", proto: tcp, from: "{{ kubernetes_node_ips }}", comment: "kube-controller-manager" }
+  - { port: "10259", proto: tcp, from: "{{ kubernetes_node_ips }}", comment: "kube-scheduler" }

@@ -1,0 +1,18 @@
+---
+firewall_enabled: true
+firewall_ssh_port: "{{ ssh_hardening_port | default(22) }}"
+# Leere Liste = SSH von überall (mit Rate-Limit). Sonst z. B. ["203.0.113.0/24"]
+firewall_ssh_sources: []
+firewall_default_incoming: deny
+firewall_default_outgoing: allow
+firewall_default_routed: deny
+firewall_logging: low
+
+# Regeln werden aus ALLEN Variablen eingesammelt, deren Name mit "firewall_rules_" beginnt.
+# So kann jede Gruppe (group_vars) eigene Regeln beisteuern, ohne andere zu überschreiben.
+# Format:
+#   firewall_rules_web:
+#     - { port: "80,443", proto: tcp, comment: "HTTP/HTTPS" }
+#     - { port: "3306", proto: tcp, from: ["10.0.0.5", "10.0.0.6"], comment: "MySQL" }
+#     - { from: "10.244.0.0/16", comment: "Pod-Netz" }   # ohne port = alles von Quelle
+firewall_rules_default: []

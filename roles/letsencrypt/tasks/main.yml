@@ -1,0 +1,50 @@
+---
+- name: E-Mail-Adresse prüfen
+  ansible.builtin.assert:
+    that: letsencrypt_email | length > 0
+    fail_msg: letsencrypt_email muss gesetzt sein (group_vars).
+  when: letsencrypt_certs | length > 0
+
+- name: Certbot installieren
+  ansible.builtin.apt:
+    name: certbot
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Webroot für ACME-Challenges anlegen
+  ansible.builtin.file:
+    path: "{{ letsencrypt_webroot }}/.well-known/acme-challenge"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy-Hook (Dienste nach Erneuerung neu laden)
+  ansible.builtin.template:
+    src: reload-services.sh.j2
+    dest: /etc/letsencrypt/renewal-hooks/deploy/reload-services.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Zertifikate anfordern
+  ansible.builtin.command: >-
+    certbot certonly --webroot -w {{ letsencrypt_webroot }}
+    --non-interactive --agree-tos --email {{ letsencrypt_email }}
+    --key-type {{ letsencrypt_key_type }}
+    --cert-name {{ item.server_name }}
+    {% if letsencrypt_staging | bool %}--test-cert{% endif %}
+    -d {{ ([item.server_name] + item.server_aliases | default([])) | join(' -d ') }}
+  args:
+    creates: "/etc/letsencrypt/live/{{ item.server_name }}/fullchain.pem"
+  loop: "{{ letsencrypt_certs }}"
+  loop_control:
+    label: "{{ item.server_name }}"
+  register: letsencrypt_issued
+
+- name: Automatische Erneuerung aktivieren (certbot.timer)
+  ansible.builtin.systemd_service:
+    name: certbot.timer
+    state: started
+    enabled: true

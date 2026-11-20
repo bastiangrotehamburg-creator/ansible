@@ -10,8 +10,16 @@
   community.general.apache2_module:
     name: "{{ item }}"
     state: present
-  loop: "{{ apache2_modules | union(['headers']) }}"
+  loop: "{{ apache2_modules | union(['headers', 'rewrite', 'ssl']) }}"
   notify: Restart apache2
+
+- name: ACME-Webroot anlegen
+  ansible.builtin.file:
+    path: "{{ apache2_acme_webroot }}/.well-known/acme-challenge"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
 
 - name: Sicherheits-Konfiguration ablegen
   ansible.builtin.template:
@@ -40,27 +48,8 @@
   loop_control:
     label: "{{ item.name }}"
 
-- name: VirtualHosts konfigurieren
-  ansible.builtin.template:
-    src: vhost.conf.j2
-    dest: "/etc/apache2/sites-available/{{ item.name }}.conf"
-    owner: root
-    group: root
-    mode: "0644"
-  loop: "{{ apache2_vhosts }}"
-  loop_control:
-    label: "{{ item.name }}"
-  notify: Reload apache2
-
-- name: VirtualHosts aktivieren
-  ansible.builtin.file:
-    src: "../sites-available/{{ item.name }}.conf"
-    dest: "/etc/apache2/sites-enabled/{{ item.name }}.conf"
-    state: link
-  loop: "{{ apache2_vhosts }}"
-  loop_control:
-    label: "{{ item.name }}"
-  notify: Reload apache2
+- name: VirtualHosts
+  ansible.builtin.include_tasks: vhosts.yml
 
 - name: Default-Site deaktivieren
   ansible.builtin.file:

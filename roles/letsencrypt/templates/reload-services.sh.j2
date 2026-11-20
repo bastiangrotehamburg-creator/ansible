@@ -1,0 +1,6 @@
+#!/bin/sh
+# {{ ansible_managed }}
+# Wird von certbot nach jeder erfolgreichen Erneuerung ausgeführt.
+{% for svc in letsencrypt_reload_services %}
+systemctl reload {{ svc }}
+{% endfor %}
