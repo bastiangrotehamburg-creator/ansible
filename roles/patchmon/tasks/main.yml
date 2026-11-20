@@ -1,0 +1,39 @@
+---
+- name: Pflichtvariablen prüfen
+  ansible.builtin.assert:
+    that:
+      - patchmon_server_url | length > 0
+      - patchmon_enroll_token_key | length > 0
+      - patchmon_enroll_token_secret | length > 0
+    fail_msg: >-
+      patchmon_server_url, patchmon_enroll_token_key und patchmon_enroll_token_secret
+      müssen gesetzt sein (siehe group_vars/all + Vault).
+
+- name: Voraussetzungen für den Agent installieren
+  ansible.builtin.package:
+    name:
+      - curl
+      - ca-certificates
+    state: present
+
+- name: PatchMon-Agent per Auto-Enrollment installieren
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      url="${PM_URL}/api/v1/auto-enrollment/script?type=${PM_TYPE}&token_key=${PM_KEY}&token_secret=${PM_SECRET}"
+      curl -fsSL "$url" | sh
+    executable: /bin/bash
+    creates: "{{ patchmon_credentials_file }}"
+  environment:
+    PM_URL: "{{ patchmon_server_url }}"
+    PM_TYPE: "{{ patchmon_enroll_type }}"
+    PM_KEY: "{{ patchmon_enroll_token_key }}"
+    PM_SECRET: "{{ patchmon_enroll_token_secret }}"
+  no_log: true
+
+- name: PatchMon-Agent-Dienst aktivieren und starten
+  ansible.builtin.systemd_service:
+    name: patchmon-agent
+    enabled: true
+    state: started
+  when: patchmon_service_enabled | bool

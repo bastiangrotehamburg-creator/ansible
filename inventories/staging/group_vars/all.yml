@@ -25,3 +25,8 @@ users_list_base:
   #   groups: [admins]
   #   ssh_keys: ["ssh-ed25519 AAAA... max@laptop"]
   #   password: "{{ vault_max_password_hash }}"   # Hash: mkpasswd -m sha-512
+
+# ---------------- PatchMon ----------------
+patchmon_server_url: "https://patchmon.example.com"       # <- PatchMon-Server eintragen
+patchmon_enroll_token_key: "patchmon_ae_CHANGE_ME"        # <- Auto-Enrollment-Token-Key (PatchMon-UI)
+patchmon_enroll_token_secret: "{{ vault_patchmon_enroll_token_secret }}"
