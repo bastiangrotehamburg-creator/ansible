@@ -1,0 +1,24 @@
+---
+galaxy_info:
+  role_name: kubernetes
+  author: your-org
+  description: Install and update Kubernetes (kubelet, kubeadm, kubectl) to a pinned version
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+    - name: Debian
+      versions:
+        - bookworm
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - kubernetes
+    - k8s
+    - kubeadm
+
+dependencies: []

@@ -1,0 +1,29 @@
+---
+# Install or update Kubernetes components to a pinned version.
+#
+# - On a fresh host, packages are installed at kubernetes_install_version.
+# - To move an existing host to a new release, set kubernetes_update_version
+#   and run with: -e "kubernetes_action=update"
+#
+# Both versions default to 1.37.2.
+
+- name: Select target Kubernetes version
+  ansible.builtin.set_fact:
+    kubernetes_target_version: >-
+      {{ kubernetes_update_version
+         if kubernetes_action | default('install') == 'update'
+         else kubernetes_install_version }}
+
+- name: Include Debian/Ubuntu package tasks
+  ansible.builtin.include_tasks: packages-debian.yml
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Include RedHat/EL package tasks
+  ansible.builtin.include_tasks: packages-redhat.yml
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: Ensure kubelet is enabled
+  ansible.builtin.service:
+    name: kubelet
+    enabled: true
+  notify: restart kubelet

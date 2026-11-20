@@ -1,0 +1,19 @@
+---
+- name: Add Kubernetes yum repository
+  ansible.builtin.yum_repository:
+    name: kubernetes
+    description: Kubernetes
+    baseurl: "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_repo_version }}/rpm/"
+    gpgcheck: true
+    gpgkey: "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_repo_version }}/rpm/repodata/repomd.xml.key"
+    enabled: true
+    exclude: "{{ kubernetes_packages | join(' ') }}"
+
+- name: Install/upgrade Kubernetes packages to the pinned version
+  ansible.builtin.dnf:
+    name: "{{ item }}-{{ kubernetes_target_version }}"
+    state: present
+    disable_excludes: kubernetes
+    allow_downgrade: true
+  loop: "{{ kubernetes_packages }}"
+  notify: restart kubelet

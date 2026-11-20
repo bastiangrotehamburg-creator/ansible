@@ -1,0 +1,24 @@
+---
+# Default variables for the kubernetes role.
+
+# Target Kubernetes version for a fresh installation.
+kubernetes_install_version: "1.37.2"
+
+# Target Kubernetes version when updating an existing node.
+kubernetes_update_version: "1.37.2"
+
+# Package channel version (major.minor) derived from the install version.
+# Used for the pkgs.k8s.io apt/yum repository path.
+kubernetes_repo_version: "v1.37"
+
+# APT package hold: keep kubelet/kubeadm/kubectl pinned to the chosen version.
+kubernetes_hold_packages: true
+
+# Container runtime socket used by kubeadm/kubelet.
+kubernetes_cri_socket: "unix:///run/containerd/containerd.sock"
+
+# Packages managed by this role.
+kubernetes_packages:
+  - kubelet
+  - kubeadm
+  - kubectl
