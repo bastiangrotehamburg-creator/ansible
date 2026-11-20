@@ -1,0 +1,17 @@
+---
+# PatchMon-Agent (Auto-Enrollment).
+# Server-URL und Enrollment-Token werden pro Umgebung in group_vars/all gesetzt;
+# das Token-Secret gehört in die Vault.
+patchmon_server_url: ""
+patchmon_enroll_token_key: ""
+patchmon_enroll_token_secret: ""
+
+# Host-Typ laut PatchMon: direct-host (normaler Server) oder proxmox-lxc
+patchmon_enroll_type: direct-host
+
+# Agent-Dienst nach der Installation aktivieren und starten
+patchmon_service_enabled: true
+
+# Pfade nach der Installation (dienen als Idempotenz-Marker)
+patchmon_agent_binary: /usr/local/bin/patchmon-agent
+patchmon_credentials_file: /etc/patchmon/credentials.yml

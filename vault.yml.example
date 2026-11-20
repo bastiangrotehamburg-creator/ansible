@@ -5,3 +5,4 @@
 #   git mv inventories/production/group_vars/all.yml inventories/production/group_vars/all/main.yml
 #   ansible-vault create inventories/production/group_vars/all/vault.yml
 vault_mysql_app_password: "CHANGE_ME"
+vault_patchmon_enroll_token_secret: "CHANGE_ME"
